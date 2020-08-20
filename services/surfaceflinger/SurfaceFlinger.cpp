@@ -3417,7 +3417,9 @@ bool SurfaceFlinger::doComposeSurfaces(const sp<DisplayDevice>& displayDevice,
     const Region bounds(displayState.bounds);
     const DisplayRenderArea renderArea(displayDevice);
     const bool hasClientComposition = getHwComposer().hasClientComposition(displayId);
+#ifdef QCOM_UM_FAMILY
     const bool hasFlipClientTargetRequest = getHwComposer().hasFlipClientTargetRequest(displayId);
+#endif
     ATRACE_INT("hasClientComposition", hasClientComposition);
 
     bool applyColorMatrix = false;
@@ -3430,7 +3432,11 @@ bool SurfaceFlinger::doComposeSurfaces(const sp<DisplayDevice>& displayDevice,
     if (hasClientComposition) {
         ALOGV("hasClientComposition");
 
+#ifdef QCOM_UM_FAMILY
         if (displayDevice->getId() && supportProtectedContent) {
+#else
+        if (displayDevice->isPrimary() && supportProtectedContent) {
+#endif
             bool needsProtected = false;
             for (auto& layer : displayDevice->getVisibleLayersSortedByZ()) {
                 // If the layer is a protected layer, mark protected context is needed.
@@ -3483,6 +3489,7 @@ bool SurfaceFlinger::doComposeSurfaces(const sp<DisplayDevice>& displayDevice,
         if (applyColorMatrix) {
             clientCompositionDisplay.colorTransform = displayState.colorTransformMat;
         }
+#ifdef QCOM_UM_FAMILY
     } else if (hasFlipClientTargetRequest) {
         buf = display->getRenderSurface()->dequeueBuffer(&fd);
 
@@ -3492,6 +3499,7 @@ bool SurfaceFlinger::doComposeSurfaces(const sp<DisplayDevice>& displayDevice,
                   displayDevice->getDisplayName().c_str());
             return false;
         }
+#endif
     }
 
     /*

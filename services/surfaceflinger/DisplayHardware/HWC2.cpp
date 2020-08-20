@@ -147,7 +147,9 @@ Error Device::createVirtualDisplay(uint32_t width, uint32_t height,
     display->setConnected(true);
     *outDisplay = display.get();
     mDisplays.emplace(displayId, std::move(display));
+#ifdef QCOM_UM_FAMILY
     mComposer->setClientTargetSlotCount((*outDisplay)->getId());
+#endif
     ALOGI("Created virtual display");
     return Error::None;
 }

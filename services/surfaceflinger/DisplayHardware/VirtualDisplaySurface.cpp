@@ -163,7 +163,11 @@ status_t VirtualDisplaySurface::prepareFrame(CompositionType compositionType) {
 
     if (mCompositionType != COMPOSITION_GLES &&
             (mOutputFormat != mDefaultOutputFormat ||
+#ifdef QCOM_UM_FAMILY
              !(mOutputUsage & GRALLOC_USAGE_HW_COMPOSER))) {
+#else
+             mOutputUsage != GRALLOC_USAGE_HW_COMPOSER)) {
+#endif
         // We must have just switched from GLES-only to MIXED or HWC
         // composition. Stop using the format and usage requested by the GLES
         // driver; they may be suboptimal when HWC is writing to the output
@@ -258,7 +262,11 @@ void VirtualDisplaySurface::onFrameCommitted() {
         int sslot = mapProducer2SourceSlot(SOURCE_SINK, mOutputProducerSlot);
         QueueBufferOutput qbo;
         VDS_LOGV("onFrameCommitted: queue sink sslot=%d", sslot);
+#ifdef QCOM_UM_FAMILY
         if (retireFence->isValid() && mMustRecompose) {
+#else
+        if (mMustRecompose) {
+#endif
             status_t result = mSource[SOURCE_SINK]->queueBuffer(sslot,
                     QueueBufferInput(
                         systemTime(), false /* isAutoTimestamp */,
@@ -323,6 +331,7 @@ status_t VirtualDisplaySurface::dequeueBuffer(Source source,
         PixelFormat format, uint64_t usage, int* sslot, sp<Fence>* fence) {
     LOG_FATAL_IF(!mDisplayId);
 
+#ifdef QCOM_UM_FAMILY
     // Exclude video encoder usage flag from scratch buffer usage flags.
     if (source == SOURCE_SCRATCH) {
         usage |= GRALLOC_USAGE_HW_FB;
@@ -330,6 +339,7 @@ status_t VirtualDisplaySurface::dequeueBuffer(Source source,
         VDS_LOGV("dequeueBuffer(%s): updated scratch buffer usage flags=%#" PRIx64,
                 dbgSourceStr(source), usage);
     }
+#endif
 
     status_t result =
             mSource[source]->dequeueBuffer(sslot, fence, mSinkBufferWidth, mSinkBufferHeight,
@@ -356,11 +366,19 @@ status_t VirtualDisplaySurface::dequeueBuffer(Source source,
         }
     }
     if (result & BUFFER_NEEDS_REALLOCATION) {
+#ifdef QCOM_UM_FAMILY
         auto status = mSource[source]->requestBuffer(*sslot, &mProducerBuffers[pslot]);
         if (status < 0) {
             mProducerBuffers[pslot].clear();
             mSource[source]->cancelBuffer(*sslot, *fence);
             return status;
+#else
+        result = mSource[source]->requestBuffer(*sslot, &mProducerBuffers[pslot]);
+        if (result < 0) {
+            mProducerBuffers[pslot].clear();
+            mSource[source]->cancelBuffer(*sslot, *fence);
+            return result;
+#endif
         }
         VDS_LOGV("dequeueBuffer(%s): buffers[%d]=%p fmt=%d usage=%#" PRIx64,
                 dbgSourceStr(source), pslot, mProducerBuffers[pslot].get(),

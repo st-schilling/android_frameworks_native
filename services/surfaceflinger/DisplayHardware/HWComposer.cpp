@@ -573,7 +573,9 @@ status_t HWComposer::presentAndGetReleaseFences(DisplayId displayId) {
         return NO_ERROR;
     }
 
+#ifdef QCOM_UM_FAMILY
     displayData.lastPresentFence = Fence::NO_FENCE;
+#endif
     auto error = hwcDisplay->present(&displayData.lastPresentFence);
     RETURN_IF_HWC_ERROR_FOR("present", error, displayId, UNKNOWN_ERROR);
 
